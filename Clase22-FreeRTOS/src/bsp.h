@@ -9,32 +9,30 @@
 #define BSP_BSP_H_
 
 #include "stdint.h"
+#include "stm32f4xx.h"
+
+#define LED_A	GPIO_PIN_0
+#define LED_B	GPIO_PIN_1
+#define LED_C	GPIO_PIN_2
+#define LED_D	GPIO_PIN_3
+#define LED_E	GPIO_PIN_6
+#define LED_F	GPIO_PIN_7
+#define LED_G	GPIO_PIN_10
+#define LED_H	GPIO_PIN_11
 
 #define LEDS_PORT GPIOD
 
-enum{
-	LED_VERDE = 0,
-	LED_ROJO,
-	LED_NARANJA,
-	LED_AZUL
-}leds;
-
-
-#define EXP_BOARD_POT_PIN				   GPIO_PIN_2
-#define EXP_BOARD_POT_PORT                   GPIOC
-#define EXP_BOARD_POT_PIN_CLK_ENABLE()           __GPIOC_CLK_ENABLE()
-#define EXP_BOARD_POT_ADC_CLK_ENABLE()		__ADC1_CLK_ENABLE()
-#define EXP_BOARD_POT_CLK_DISABLE()          __GPIOD_CLK_DISABLE()
-#define EXP_BOARD_POT_CHANNEL				   ADC_CHANNEL_12
-
+#define SW_UP_PIN          GPIO_PIN_4
+#define SW_LEFT_PIN        GPIO_PIN_5
+#define SW_DOWN_PIN        GPIO_PIN_6
+#define SW_RIGHT_PIN       GPIO_PIN_2
 
 void BSP_Init(void);
-
-uint32_t Get_SW_State(void);
-
 void led_setBright(uint8_t led, uint8_t value);
-
 void BSP_ADC_Init(void);
+void LedOn(uint8_t led);
+void LedOff(uint8_t led);
 uint8_t BSP_GetBrightness(void);
+uint32_t BSP_SW_GetState(uint8_t sw);
 
 #endif /* BSP_BSP_H_ */

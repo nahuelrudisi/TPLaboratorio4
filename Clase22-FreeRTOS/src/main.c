@@ -20,85 +20,216 @@
 #include "semphr.h"
 #include "queue.h"
 
-TaskHandle_t tareaB;
-SemaphoreHandle_t xSemaphore;
-QueueHandle_t xQueue1;
+/**Declaración de las tareas del sistema**/
+static void vSecuenciaUno(void *pvParameters);
+static void vSecuenciaDos(void *pvParameters);
+static void vSecuenciaTres(void *pvParameters);
+static void vBoton(void *pvParameters);
+static void vSerie(void *pvParameters);
 
-void prvTaskA(void* pvParameters) {
-	(void) pvParameters;                    // Just to stop compiler warnings.
-	char msg = 'A';
-	for (;;) {
-		xQueueSend(xQueue1, (void * ) &msg, 0);
-		xQueueSend(xQueue1, (void * ) &msg, 0);
-		xQueueSend(xQueue1, (void * ) &msg, 0);
-		vTaskDelay(1000);
-	}
-}
+SemaphoreHandle_t Secuencia_Uno;	//Semáforo para habilitar o bloquear la tarea vSecuenciaUno
+SemaphoreHandle_t Secuencia_Dos;	//Semáforo para habilitar o bloquear la tarea vSecuenciaDos
+SemaphoreHandle_t Secuencia_Tres;	//Semáforo para habilitar o bloquear la tarea vSecuenciaTres
+SemaphoreHandle_t Boton;			//Semáforo para habilitar o bloquear la tarea vBoton
+SemaphoreHandle_t Serie;			//Semáforo para habilitar o bloquear la tarea vSerie
+QueueHandle_t Cola = 0;
 
-void prvTaskB(void* pvParameters) {
-	(void) pvParameters;                    // Just to stop compiler warnings.
-	char msg = 'B';
-	for (;;) {
-		xQueueSend(xQueue1, (void * ) &msg, 0);
-		xQueueSend(xQueue1, (void * ) &msg, 0);
-		xQueueSend(xQueue1, (void * ) &msg, 0);
+static void vSecuenciaUno(void *pvParameters)
+{
+	uint8_t led = 0, bandera = 0;
+
+	/* Tomar el semaforo por segunda vez para bloquear la tarea*/
+	xSemaphoreTake(Secuencia_Uno, portMAX_DELAY);
+
+	for (;;)
+	{
+		//Delay del sistema operativo
 		vTaskDelay(100);
+
+		if(led == 0)
+			bandera = 0;
+
+		if(led == 8)
+			bandera = 1;
+
+		if(bandera == 0)
+		{
+			LedOn(led);
+			led++;
+		}
+		else
+		{
+			led--;
+			LedOff(led);
+		}
+
+		/* Entrega el semáforo de la secuencia dos para que esta se desbloquee*/
+		xSemaphoreGive(Boton);
+		/*Toma el semáforo de la secuencia uno para que esta se bloquee*/
+		xSemaphoreTake(Secuencia_Uno, portMAX_DELAY);
 	}
 }
 
-void prvTaskC(void* pvParameters) {
-	(void) pvParameters;                    // Just to stop compiler warnings.
-	char msg;
-	char buffer[100];
-	int size;
-	for (;;) {
-		xQueueReceive( xQueue1,(void * ) &( msg ), portMAX_DELAY );
-		size = sprintf(buffer, "Recibi mensaje %c\n",msg);
-		TransmitData(buffer, size);
+static void vSecuenciaDos(void *pvParameters)
+{
+	uint8_t led = 0, bandera = 0;
+
+	for (;;)
+	{
+		//Delay del sistema operativo
+		vTaskDelay(100);
+
+		if(led == 0)
+		{
+			led++;
+			bandera = 0;
+		}
+
+		if(led == 8)
+		{
+			led--;
+			bandera = 1;
+		}
+
+		if(bandera == 0)
+		{
+			LedOn(led);
+			vTaskDelay(100);
+			LedOff(led-1);
+			led++;
+		}
+		else
+		{
+			led--;
+			LedOn(led);
+			vTaskDelay(100);
+			LedOff(led+1);
+		}
+
+		/* Entrega el semáforo de la secuencia tres para que esta se desbloquee*/
+		xSemaphoreGive(Boton);
+		/*Toma el semáforo de la secuencia dos para que esta se bloquee*/
+		xSemaphoreTake(Secuencia_Dos, portMAX_DELAY);
 	}
 }
-typedef struct {
-	uint8_t led;
-	uint32_t int_inicial;
-} parametro;
 
-void tareaLed(void* pvParameters) {
-	parametro *data = (parametro *) pvParameters;
+static void vSecuenciaTres(void *pvParameters)
+{
+	uint8_t led = 0;
 
-	int i = data->int_inicial;
-	int incre = 1;
+	for (;;)
+	{
+		//Delay del sistema operativo
+		vTaskDelay(100);
 
-	for (;;) {
-		vTaskDelay(20);
-		led_setBright(data->led, i);
+		for(led=0;led<8;led++)
+			LedOn(led);
 
-		i += incre;
-		if (i >= 75)
-			incre = -1;
-		else if (i <= 0)
-			incre = 1;
+		vTaskDelay(100);
+
+		for(led=0;led<8;led++)
+			LedOff(led);
+
+		/* Entrega el semáforo de Boton para que esta se desbloquee*/
+		xSemaphoreGive(Boton);
+		/*Toma el semáforo de la secuencia tres para que esta se bloquee*/
+		xSemaphoreTake(Secuencia_Tres, portMAX_DELAY);
 	}
 }
 
-parametro dataA = { LED_VERDE, 0 };
-parametro dataB = { LED_NARANJA, 25 };
-parametro dataC = { LED_ROJO, 50 };
-parametro dataD = { LED_AZUL, 75 };
+static void vBoton(void *pvParameters)
+{
+	uint8_t secuencia = 0;
+
+	for (;;)
+	{
+		if(BSP_SW_GetState(1) == 0)
+		{
+			if(secuencia == 0)
+				secuencia = 2;
+			else
+				secuencia--;
+		}
+
+		if(BSP_SW_GetState(3) == 0)
+		{
+			if(secuencia == 2)
+				secuencia = 0;
+			else
+				secuencia++;
+		}
+
+		switch(secuencia)
+		{
+			case 0:
+					/* Entrega el semáforo de Secuencia Uno para que esta se desbloquee*/
+					xSemaphoreGive(Secuencia_Uno);
+					/*Toma el semáforo de Boton para que esta se bloquee*/
+					xSemaphoreTake(Boton, portMAX_DELAY);
+					break;
+			case 1:
+					/* Entrega el semáforo de Secuencia Dos para que esta se desbloquee*/
+					xSemaphoreGive(Secuencia_Dos);
+					/*Toma el semáforo de Boton para que esta se bloquee*/
+					xSemaphoreTake(Boton, portMAX_DELAY);
+					break;
+			case 2:
+					/* Entrega el semáforo de Secuencia Tres para que esta se desbloquee*/
+					xSemaphoreGive(Secuencia_Tres);
+					/*Toma el semáforo de Boton para que esta se bloquee*/
+					xSemaphoreTake(Boton, portMAX_DELAY);
+					break;
+			default:
+					/* Entrega el semáforo de Secuencia Uno para que esta se desbloquee*/
+					xSemaphoreGive(Secuencia_Uno);
+					/*Toma el semáforo de Boton para que esta se bloquee*/
+					xSemaphoreTake(Boton, portMAX_DELAY);
+					break;
+		}
+	}
+}
+
+static void vSerie(void *pvParameters)
+{
+	for (;;)
+	{
+
+		/* Entrega el semáforo de la secuencia uno para que esta se desbloquee*/
+		xSemaphoreGive(Secuencia_Uno);
+		/*Toma el semáforo de la secuencia tres para que esta se bloquee*/
+		xSemaphoreTake(Serie, portMAX_DELAY);
+	}
+}
 
 int main(void) {
 	//vUartInit();
 
 	BSP_Init();
 
-	xTaskCreate(tareaLed, (signed char * ) "TaskA", configMINIMAL_STACK_SIZE,
-			(void* ) &dataA, tskIDLE_PRIORITY, ( xTaskHandle * ) NULL);
-	xTaskCreate(tareaLed, (signed char * ) "TaskB", configMINIMAL_STACK_SIZE,
-			(void* ) &dataB, tskIDLE_PRIORITY, ( xTaskHandle * ) NULL);
-	xTaskCreate(tareaLed, (signed char * ) "TaskC", configMINIMAL_STACK_SIZE,
-			(void* ) &dataC, tskIDLE_PRIORITY, ( xTaskHandle * ) NULL);
-	xTaskCreate(tareaLed, (signed char * ) "TaskD", configMINIMAL_STACK_SIZE,
-			(void* ) &dataD, tskIDLE_PRIORITY, ( xTaskHandle * ) NULL);
+	Cola = xQueueCreate(1, sizeof(int));
 
+	/*Creación de los semáforos*/
+	Secuencia_Uno = xSemaphoreCreateBinary();
+	Secuencia_Dos = xSemaphoreCreateBinary();
+	Secuencia_Tres = xSemaphoreCreateBinary();
+	Boton = xSemaphoreCreateBinary();
+	Serie = xSemaphoreCreateBinary();
+
+	/*Crear las tareas*/
+	xTaskCreate(vSecuenciaUno, "Rutina 1", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+	xTaskCreate(vSecuenciaDos, "Rutina 2", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+	xTaskCreate(vSecuenciaTres, "Rutina 3", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+	xTaskCreate(vBoton, "Boton", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+	xTaskCreate(vSerie, "Serie", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
+
+	/* Tomar semáforos por primera vez */
+	xSemaphoreTake(Secuencia_Uno, 0);
+	xSemaphoreTake(Secuencia_Dos, 0);
+	xSemaphoreTake(Secuencia_Tres, 0);
+	xSemaphoreTake(Boton, 0);
+	xSemaphoreTake(Serie, 0);
+
+	/*Después de ejecutar las configuraciones iniciales se inicia el scheduler*/
 	vTaskStartScheduler();
 
 	//should never get here
@@ -107,6 +238,3 @@ int main(void) {
 		;
 }
 
-void APP_1ms() {
-
-}

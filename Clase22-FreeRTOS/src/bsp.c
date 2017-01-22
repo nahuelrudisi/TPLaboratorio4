@@ -5,10 +5,7 @@
  *      Author: LCSR-AF
  */
 #include "bsp.h"
-#include "stm32f4xx.h"
 #include "stm32f4_discovery.h"
-
-extern void APP_1ms(void);
 
 TIM_HandleTypeDef TIM2_Handle;
 TIM_HandleTypeDef TIM4_Handle;
@@ -19,6 +16,8 @@ uint8_t rxBuffer[50];
 uint32_t* const leds_pwm[] = { &TIM4->CCR1, &TIM4->CCR3, &TIM4->CCR2,
 		&TIM4->CCR4 };
 
+const uint16_t LED_PIN[8] = {LED_A, LED_B, LED_C, LED_D, LED_E, LED_F, LED_G, LED_H};
+const uint16_t SW_PIN[4] = {SW_UP_PIN, SW_LEFT_PIN, SW_DOWN_PIN, SW_RIGHT_PIN};
 
 void BSP_UART_Init(void) {
 
@@ -53,9 +52,6 @@ void BSP_UART_Init(void) {
 	HAL_UART_Receive_IT(&UART3_Handle, rxBuffer, 50);
 }
 
-
-
-
 void BSP_Init(void) {
 	RCC_OscInitTypeDef RCC_OscInitStruct;
 	RCC_ClkInitTypeDef RCC_ClkInitStruct;
@@ -86,14 +82,24 @@ void BSP_Init(void) {
 	__GPIOD_CLK_ENABLE()
 	;
 
-	GPIO_InitTypeDef GPIO_Init;
+	GPIO_InitTypeDef Led_Init;
 
-	GPIO_Init.Mode = GPIO_MODE_AF_PP;
-	GPIO_Init.Pull = GPIO_NOPULL;
-	GPIO_Init.Speed = GPIO_SPEED_FAST;
-	GPIO_Init.Alternate = GPIO_AF2_TIM4;
-	GPIO_Init.Pin = GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
-	HAL_GPIO_Init(LEDS_PORT, &GPIO_Init);
+	Led_Init.Mode = GPIO_MODE_OUTPUT_PP;
+	Led_Init.Pull = GPIO_NOPULL;
+	Led_Init.Speed = GPIO_SPEED_FAST;
+	Led_Init.Pin = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 | GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_10 | GPIO_PIN_11;
+	HAL_GPIO_Init(LEDS_PORT, &Led_Init);
+
+	GPIO_InitTypeDef GPIO_InitStruct;
+
+	__GPIOE_CLK_ENABLE();
+
+    GPIO_InitStruct.Pin = SW_UP_PIN | SW_LEFT_PIN | SW_DOWN_PIN | SW_RIGHT_PIN;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_PULLUP;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
+
+	HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
 	__TIM2_CLK_ENABLE()
 	;
@@ -109,15 +115,6 @@ void BSP_Init(void) {
 
 	HAL_NVIC_SetPriority(TIM2_IRQn, 10, 1);
 	HAL_NVIC_EnableIRQ(TIM2_IRQn);
-
-	__GPIOA_CLK_ENABLE()
-	;
-
-	GPIO_Init.Mode = GPIO_MODE_INPUT;
-	GPIO_Init.Pull = GPIO_NOPULL;
-	GPIO_Init.Speed = GPIO_SPEED_FAST;
-	GPIO_Init.Pin = GPIO_PIN_0;
-	HAL_GPIO_Init(GPIOA, &GPIO_Init);
 
 	__TIM3_CLK_ENABLE()
 	;
@@ -159,10 +156,6 @@ void BSP_Init(void) {
 	BSP_UART_Init();
 }
 
-uint32_t Get_SW_State(void) {
-	return HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
-}
-
 void led_setBright(uint8_t led, uint8_t value) {
 	*leds_pwm[led] = 1000 * value / 100;
 }
@@ -171,11 +164,6 @@ void BSP_ADC_Init(void) {
 
 	ADC_ChannelConfTypeDef ChannelConfStruct;
 	GPIO_InitTypeDef GPIO_InitStruct;
-
-	EXP_BOARD_POT_PIN_CLK_ENABLE()
-	;
-	EXP_BOARD_POT_ADC_CLK_ENABLE()
-	;
 
 	ADC_HandleStruct.Instance = ADC1;
 
@@ -193,7 +181,7 @@ void BSP_ADC_Init(void) {
 	ADC_HandleStruct.Init.ExternalTrigConvEdge =
 	ADC_EXTERNALTRIGCONVEDGE_NONE;
 	ADC_HandleStruct.Init.EOCSelection = DISABLE;
-
+/*
 	GPIO_InitStruct.Pin = EXP_BOARD_POT_PIN;
 	GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -205,7 +193,7 @@ void BSP_ADC_Init(void) {
 	ChannelConfStruct.Offset = 0;
 	ChannelConfStruct.Rank = 1;
 	ChannelConfStruct.SamplingTime = ADC_SAMPLETIME_15CYCLES;
-
+*/
 	HAL_ADC_Init(&ADC_HandleStruct);
 	HAL_ADC_ConfigChannel(&ADC_HandleStruct, &ChannelConfStruct);
 	HAL_ADC_Start(&ADC_HandleStruct);
@@ -220,8 +208,6 @@ uint8_t BSP_GetBrightness(void) {
 void TIM2_IRQHandler(void) {
 
 	__HAL_TIM_CLEAR_FLAG(&TIM2_Handle, TIM_FLAG_UPDATE);
-	APP_1ms();
-
 }
 
 void USART3_IRQHandler(void) {
@@ -230,8 +216,20 @@ void USART3_IRQHandler(void) {
 
 }
 
-
 void TransmitData(uint8_t *buffer, uint8_t size) {
 	HAL_UART_Transmit(&UART3_Handle, buffer, size, 100);
 
 }
+
+uint32_t BSP_SW_GetState(uint8_t sw){
+	return HAL_GPIO_ReadPin(GPIOE, SW_PIN[sw]);
+}
+
+void LedOn(uint8_t led) {
+	HAL_GPIO_WritePin(LEDS_PORT, LED_PIN[led], GPIO_PIN_SET);
+}
+
+void LedOff(uint8_t led) {
+	HAL_GPIO_WritePin(LEDS_PORT, LED_PIN[led], GPIO_PIN_RESET);
+}
+
