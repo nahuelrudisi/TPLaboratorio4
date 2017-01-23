@@ -34,6 +34,9 @@ SemaphoreHandle_t Boton;			//Semáforo para habilitar o bloquear la tarea vBoton
 SemaphoreHandle_t Serie;			//Semáforo para habilitar o bloquear la tarea vSerie
 QueueHandle_t Cola = 0;
 
+TickType_t ms = 100;
+static TickType_t tiempo = 1;
+
 static void vSecuenciaUno(void *pvParameters)
 {
 	uint8_t led = 0, bandera = 0;
@@ -43,9 +46,6 @@ static void vSecuenciaUno(void *pvParameters)
 
 	for (;;)
 	{
-		//Delay del sistema operativo
-		vTaskDelay(100);
-
 		if(led == 0)
 			bandera = 0;
 
@@ -76,9 +76,6 @@ static void vSecuenciaDos(void *pvParameters)
 
 	for (;;)
 	{
-		//Delay del sistema operativo
-		vTaskDelay(100);
-
 		if(led == 0)
 		{
 			led++;
@@ -94,7 +91,7 @@ static void vSecuenciaDos(void *pvParameters)
 		if(bandera == 0)
 		{
 			LedOn(led);
-			vTaskDelay(100);
+			Delay_Conf();
 			LedOff(led-1);
 			led++;
 		}
@@ -102,7 +99,7 @@ static void vSecuenciaDos(void *pvParameters)
 		{
 			led--;
 			LedOn(led);
-			vTaskDelay(100);
+			Delay_Conf();
 			LedOff(led+1);
 		}
 
@@ -119,13 +116,10 @@ static void vSecuenciaTres(void *pvParameters)
 
 	for (;;)
 	{
-		//Delay del sistema operativo
-		vTaskDelay(100);
-
 		for(led=0;led<8;led++)
 			LedOn(led);
 
-		vTaskDelay(100);
+		Delay_Conf();
 
 		for(led=0;led<8;led++)
 			LedOff(led);
@@ -139,16 +133,37 @@ static void vSecuenciaTres(void *pvParameters)
 
 static void vBoton(void *pvParameters)
 {
-	uint8_t secuencia = 0;
+	uint8_t secuencia = 0, bandera_tiempo = 0;
 
 	for (;;)
 	{
+		Delay_Conf();
+
 		if(BSP_SW_GetState(1) == 0)
 		{
 			if(secuencia == 0)
 				secuencia = 2;
 			else
 				secuencia--;
+		}
+
+		if(BSP_SW_GetState(2) == 0)
+		{
+			if(bandera_tiempo == 0)
+			{
+				tiempo++;
+				if(tiempo > 10)
+					bandera_tiempo = 1;
+			}
+			else
+			{
+				tiempo--;
+				if(tiempo < 1)
+				{
+					tiempo++;
+					bandera_tiempo = 0;
+				}
+			}
 		}
 
 		if(BSP_SW_GetState(3) == 0)
@@ -238,3 +253,11 @@ int main(void) {
 		;
 }
 
+void Delay_Conf(void)
+{
+	uint8_t i;
+	for(i=0;i<tiempo;i++)
+		vTaskDelay(ms);
+
+	return;
+}

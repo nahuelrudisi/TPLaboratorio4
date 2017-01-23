@@ -186,9 +186,7 @@ void BSP_ADC_Init(void) {
 	GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
-
 	HAL_GPIO_Init(EXP_BOARD_POT_PORT, &GPIO_InitStruct);
-
 	ChannelConfStruct.Channel = EXP_BOARD_POT_CHANNEL;
 	ChannelConfStruct.Offset = 0;
 	ChannelConfStruct.Rank = 1;
@@ -232,4 +230,3 @@ void LedOn(uint8_t led) {
 void LedOff(uint8_t led) {
 	HAL_GPIO_WritePin(LEDS_PORT, LED_PIN[led], GPIO_PIN_RESET);
 }
-

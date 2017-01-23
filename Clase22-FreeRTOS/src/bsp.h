@@ -32,7 +32,9 @@ void led_setBright(uint8_t led, uint8_t value);
 void BSP_ADC_Init(void);
 void LedOn(uint8_t led);
 void LedOff(uint8_t led);
+uint8_t nuevo_Dato(void);
 uint8_t BSP_GetBrightness(void);
 uint32_t BSP_SW_GetState(uint8_t sw);
+void Delay_Conf(void);
 
 #endif /* BSP_BSP_H_ */
