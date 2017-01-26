@@ -1,10 +1,3 @@
-/*
- * bsp.h
- *
- *  Created on: 11 de ago. de 2016
- *      Author: LCSR-AF
- */
-
 #ifndef BSP_BSP_H_
 #define BSP_BSP_H_
 

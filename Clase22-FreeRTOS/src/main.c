@@ -1,13 +1,3 @@
-/**
- ******************************************************************************
- * @file    main.c
- * @author  Ac6
- * @version V1.0
- * @date    01-December-2013
- * @brief   Default main function.
- ******************************************************************************
- */
-
 #include "bsp.h"
 
 /* Standard includes */
@@ -91,7 +81,7 @@ static void vSecuenciaDos(void *pvParameters)
 		if(bandera == 0)
 		{
 			LedOn(led);
-			Delay_Conf();
+			vTaskDelay(100);
 			LedOff(led-1);
 			led++;
 		}
@@ -99,7 +89,7 @@ static void vSecuenciaDos(void *pvParameters)
 		{
 			led--;
 			LedOn(led);
-			Delay_Conf();
+			vTaskDelay(100);
 			LedOff(led+1);
 		}
 
@@ -119,7 +109,7 @@ static void vSecuenciaTres(void *pvParameters)
 		for(led=0;led<8;led++)
 			LedOn(led);
 
-		Delay_Conf();
+		vTaskDelay(100);;
 
 		for(led=0;led<8;led++)
 			LedOff(led);
@@ -137,7 +127,7 @@ static void vBoton(void *pvParameters)
 
 	for (;;)
 	{
-		Delay_Conf();
+		vTaskDelay(100);
 
 		if(BSP_SW_GetState(1) == 0)
 		{
@@ -152,7 +142,7 @@ static void vBoton(void *pvParameters)
 			if(bandera_tiempo == 0)
 			{
 				tiempo++;
-				if(tiempo > 10)
+				if(tiempo > 9)
 					bandera_tiempo = 1;
 			}
 			else
@@ -160,7 +150,7 @@ static void vBoton(void *pvParameters)
 				tiempo--;
 				if(tiempo < 1)
 				{
-					tiempo++;
+					tiempo = 2;
 					bandera_tiempo = 0;
 				}
 			}
@@ -178,41 +168,71 @@ static void vBoton(void *pvParameters)
 		{
 			case 0:
 					/* Entrega el semáforo de Secuencia Uno para que esta se desbloquee*/
-					xSemaphoreGive(Secuencia_Uno);
-					/*Toma el semáforo de Boton para que esta se bloquee*/
-					xSemaphoreTake(Boton, portMAX_DELAY);
+					xSemaphoreGive(Serie);
 					break;
 			case 1:
 					/* Entrega el semáforo de Secuencia Dos para que esta se desbloquee*/
-					xSemaphoreGive(Secuencia_Dos);
-					/*Toma el semáforo de Boton para que esta se bloquee*/
-					xSemaphoreTake(Boton, portMAX_DELAY);
+					xSemaphoreGive(Serie);
 					break;
 			case 2:
 					/* Entrega el semáforo de Secuencia Tres para que esta se desbloquee*/
-					xSemaphoreGive(Secuencia_Tres);
-					/*Toma el semáforo de Boton para que esta se bloquee*/
-					xSemaphoreTake(Boton, portMAX_DELAY);
+					xSemaphoreGive(Serie);
 					break;
 			default:
 					/* Entrega el semáforo de Secuencia Uno para que esta se desbloquee*/
 					xSemaphoreGive(Secuencia_Uno);
-					/*Toma el semáforo de Boton para que esta se bloquee*/
-					xSemaphoreTake(Boton, portMAX_DELAY);
 					break;
 		}
+		/*Toma el semáforo de Boton para que esta se bloquee*/
+		xSemaphoreTake(Boton, portMAX_DELAY);
 	}
 }
 
 static void vSerie(void *pvParameters)
 {
+	char pantalla1[19] = " | Patrón actual: ";
+	char pantalla2[22] = " | Velocidad actual: ";
+	char pantalla3[2];
+	char pantalla4[7];
+	uint8_t patron = 1, mostrar = 0;
+
 	for (;;)
 	{
+		if(mostrar == 0)
+		{
+			mostrar = 1;
+			sprintf(pantalla3,"%d",patron);
+			sprintf(pantalla4,"%d mseg.",tiempo*100);
+			TransmitData(pantalla1,19);
+			TransmitData(pantalla2,22);
+			TransmitData(pantalla3,2);
+			TransmitData(pantalla4,7);
+		}
 
-		/* Entrega el semáforo de la secuencia uno para que esta se desbloquee*/
-		xSemaphoreGive(Secuencia_Uno);
-		/*Toma el semáforo de la secuencia tres para que esta se bloquee*/
+/*		switch(patron)
+		{
+			case 1:
+					xSemaphoreGive(Secuencia_Uno);
+					break;
+
+			case 2:
+					xSemaphoreGive(Secuencia_Dos);
+					break;
+
+			case 3:
+					xSemaphoreGive(Secuencia_Tres);
+					break;
+
+			default:
+					xSemaphoreGive(Secuencia_Uno);
+					break;
+		}
 		xSemaphoreTake(Serie, portMAX_DELAY);
+*/
+	/* Entrega el semáforo de la secuencia uno para que esta se desbloquee*/
+	xSemaphoreGive(Secuencia_Uno);
+	/*Toma el semáforo de Serie para que esta se bloquee*/
+	xSemaphoreTake(Serie, portMAX_DELAY);
 	}
 }
 

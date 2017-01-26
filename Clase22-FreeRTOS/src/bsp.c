@@ -1,9 +1,3 @@
-/*
- * bsp.c
- *
- *  Created on: 11 de ago. de 2016
- *      Author: LCSR-AF
- */
 #include "bsp.h"
 #include "stm32f4_discovery.h"
 
